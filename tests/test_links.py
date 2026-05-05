@@ -115,3 +115,29 @@ def test_create_link_rejects_invalid_url(client: TestClient): # Test that creati
     )
 
     assert response.status_code == 422
+    
+def test_create_same_url_twice_returns_existing_link(client: TestClient):
+    first_response = client.post(
+        "/links",
+        json={"url": "https://example.com"},
+    )
+
+    second_response = client.post(
+        "/links",
+        json={"url": "https://example.com"},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+    first_link = first_response.json()
+    second_link = second_response.json()
+
+    assert second_link["code"] == first_link["code"]
+    assert second_link["url"] == first_link["url"]
+    assert second_link["short_url"] == first_link["short_url"]
+
+    list_response = client.get("/links")
+    links = list_response.json()
+
+    assert len(links) 

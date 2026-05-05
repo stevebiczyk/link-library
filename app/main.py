@@ -57,8 +57,16 @@ def create_link(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    code = generate_unique_short_code(db)
     url = str(link_create.url)
+
+    existing_link = db.scalar(
+        select(Link).where(Link.url == url)
+    )
+
+    if existing_link is not None:
+        return build_link_response(existing_link, request)
+
+    code = generate_unique_short_code(db)
 
     link = Link(
         code=code,
