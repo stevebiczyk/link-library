@@ -7,7 +7,7 @@ class LinkCreate(BaseModel):
         default=None,
         min_length=3,
         max_length=30,
-        pattern="^[a-Z0-9_-]+$",
+        pattern=r"^[a-z0-9_-]+$",
     ) # An optional field that allows the user to specify a custom short code for the URL. If provided, it must be between 3 and 30 characters long and can only contain letters (both uppercase and lowercase), numbers, underscores, or hyphens. If not provided, a random short code will be generated automatically.
         
     

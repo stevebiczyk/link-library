@@ -128,7 +128,7 @@ def test_create_same_url_twice_returns_existing_link(client: TestClient):
     )
 
     assert first_response.status_code == 201
-    assert second_response.status_code == 201
+    assert second_response.status_code == 200
 
     first_link = first_response.json()
     second_link = second_response.json()
@@ -140,4 +140,58 @@ def test_create_same_url_twice_returns_existing_link(client: TestClient):
     list_response = client.get("/links")
     links = list_response.json()
 
-    assert len(links) 
+    assert len(links) == 1
+    
+def test_create_link_with_custom_code(client: TestClient): # Test that creating a link with a custom code works as expected.
+    response = client.post(
+        "/links",
+        json={"url": "https://github.com", "custom_code": "github"},
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["code"] == "github"
+    assert data["url"] == "https://github.com/"
+    assert data["short_url"].endswith("/github")
+    assert "created_at" in data
+    
+def test_custom_code_redirects_to_saved_link(client: TestClient): # Test that accessing a custom short code redirects to the original URL.
+    create_response = client.post(
+        "/links",
+        json={"url": "https://github.com", "custom_code": "github"},
+    )
+    
+    assert create_response.status_code == 201
+
+    redirect_response = client.get(
+        "/github",
+        follow_redirects=False,
+    )
+
+    assert redirect_response.status_code == 307
+    assert redirect_response.headers["location"] == "https://github.com/"
+    
+def test_duplicate_custom_code_returns_409(client: TestClient): # Test that trying to create a link with a custom code that already exists returns a 409 error.
+    first_response = client.post(
+        "/links",
+        json={"url": "https://github.com", "custom_code": "github"},
+    )
+
+    second_response = client.post(
+        "/links",
+        json={"url": "https://example.com", "custom_code": "github"},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Short code already exists"}
+        
+def test_invalid_custom_code_is_rejected(client: TestClient): # Test that trying to create a link with an invalid custom code returns a 422 error.
+    response = client.post(
+        "/links",
+        json={"url": "https://example.com", "custom_code": "invalid code!"},
+    )
+
+    assert response.status_code == 422
