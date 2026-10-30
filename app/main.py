@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
 from app.models import Link
-from app.schemas import LinkCreate, LinkResponse
+from app.schemas import RESERVED_CODES, LinkCreate, LinkResponse
 
 app = FastAPI(title="LinkLibrary API")
 
@@ -42,9 +42,11 @@ def generate_unique_short_code(db: Session, length: int = 6) -> str:
     while True:
         code = generate_short_code(length)
 
-        existing_link = get_link_by_code(db, code)
+        # Skip application routes before checking the database.
+        if code in RESERVED_CODES:
+            continue # starts the next loop iteration, generating another candidate
 
-        if existing_link is None:
+        if get_link_by_code(db, code) is None:
             return code
 
 

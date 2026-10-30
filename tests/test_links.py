@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
+from app import main as main_module
 
 TEST_DATABASE_URL = "sqlite://" # Use an in-memory SQLite database for testing.
 
@@ -214,3 +215,39 @@ def test_reserved_custom_code_is_rejected(client: TestClient, code: str):
     list_response = client.get("/links")
     assert list_response.status_code == 200
     assert list_response.json() == []
+    
+def test_generated_code_skips_reserved_and_existing_codes(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    existing_response = client.post(
+        "/links",
+        json={
+            "url": "https://github.com",
+            "custom_code": "taken1",
+        },
+    )
+    assert existing_response.status_code == 201
+
+    # Force rejected candidates, followed by an available code.
+    candidates = iter(["links", "docs", "redoc", "taken1", "fresh1"])
+    monkeypatch.setattr(
+        main_module,
+        "generate_short_code",
+        lambda length=6: next(candidates),
+    )
+
+    response = client.post(
+        "/links",
+        json={"url": "https://example.com"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["code"] == "fresh1"
+
+    list_response = client.get("/links")
+    assert list_response.status_code == 200
+    assert {link["code"] for link in list_response.json()} == {
+        "taken1",
+        "fresh1",
+    }
