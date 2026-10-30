@@ -3,7 +3,7 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
@@ -195,3 +195,22 @@ def test_invalid_custom_code_is_rejected(client: TestClient): # Test that trying
     )
 
     assert response.status_code == 422
+    
+@pytest.mark.parametrize("code", ["links", "docs", "redoc"])
+def test_reserved_custom_code_is_rejected(client: TestClient, code: str):
+    response = client.post(
+        "/links",
+        json={"url": "https://example.com", "custom_code": code},
+    )
+
+    assert response.status_code == 422
+    assert any(
+        error["loc"] == ["body", "custom_code"]
+        and "This short code is reserved" in error["msg"]
+        for error in response.json()["detail"]
+    )
+
+    # Rejected requests must not create records.
+    list_response = client.get("/links")
+    assert list_response.status_code == 200
+    assert list_response.json() == []
