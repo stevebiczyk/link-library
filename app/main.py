@@ -10,7 +10,6 @@ from app.database import Base, engine, get_db
 from app.models import Link
 from app.schemas import LinkCreate, LinkResponse
 
-
 app = FastAPI(title="LinkLibrary API")
 
 
